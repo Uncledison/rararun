@@ -2,33 +2,15 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport"
-        content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
-  <title>dot.png 시각 디버그</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
+  <title>dot.png 트림 표시</title>
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.js"></script>
   <style>
     body { margin:0; padding:0; background:#000; }
     canvas { display:block; }
-    /* 태블릿에서 에셋 직접 열어보기 버튼 */
-    .bar {
-      position: fixed; inset: 0 auto auto 0;
-      background: rgba(0,0,0,.6); color:#0f0; font: 16px/1.4 monospace;
-      padding: 8px 12px; z-index: 10; border-bottom-right-radius: 12px;
-    }
-    .bar a { color:#0ff; text-decoration: underline; }
-    .hint {
-      position: fixed; right: 8px; bottom: 8px; left: 8px;
-      background: rgba(0,0,0,.6); color:#0f0; font: 14px/1.6 monospace;
-      padding: 10px 12px; z-index: 10; border-radius: 12px;
-    }
   </style>
 </head>
 <body>
-  <div class="bar">
-    <strong>에셋 확인:</strong>
-    <a href="assets/dot.png" target="_blank" rel="noopener">assets/dot.png 열기</a>
-  </div>
-  <div id="hint" class="hint" style="display:none;"></div>
   <script src="./game.js"></script>
 </body>
 </html>
