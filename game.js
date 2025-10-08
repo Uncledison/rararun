@@ -1,27 +1,31 @@
-// 배포용: 모바일에서도 dot.png가 기본으로 보이게
+// Rararun: 모바일/웹 배포용 최종본 — dot.png 기본 표시
 
 class GameScene extends Phaser.Scene {
   constructor() {
     super({ key: "GameScene" });
-    this.lanePositions = [120, 360, 600]; // 720 폭 기준 3레인
-    this.currentLane = 1;                 // 중앙
-    this.player = null;
-    this.playerOutline = null;
-    this.halo = null;
-    this.statusText = null;
+
+    // 720x1280 기준 3레인 (스프라이트 중심 X 좌표)
+    this.lanePositions = [120, 360, 600];
+    this.currentLane = 1; // 중앙 레인에서 시작
+
+    this.player = null;        // 본체
+    this.playerOutline = null; // 흰색 아웃라인(가시성 보강)
+    this.halo = null;          // 흰색 헤일로(가시성 보강)
   }
 
   preload() {
     // index.html 기준 상대 경로
     this.load.setPath("assets/");
-    // dot.png를 기본으로 사용 (캐시 버스트는 배포 때 숫자만 바꾸세요)
+
+    // 실제 아이콘: assets/dot.png (필요 시 v=숫자만 바꿔 캐시 무력화)
     this.load.image("dot", "dot.png?v=1");
   }
 
   create() {
-    this.cameras.main.setBackgroundColor("#111111"); // 어두운 회색(대비 확보)
+    // 밝은 회색 배경(검은 배경보다 가시성 좋음)
+    this.cameras.main.setBackgroundColor("#111111");
 
-    // 폴백 텍스처(빨간 사각형) 생성
+    // 폴백 텍스처(빨간 사각형) — dot 로드 실패 시에만 사용
     const g = this.add.graphics({ x: 0, y: 0, add: false });
     g.fillStyle(0xff0000, 1).fillRect(0, 0, 64, 64);
     g.generateTexture("fallbackRect", 64, 64);
@@ -29,62 +33,53 @@ class GameScene extends Phaser.Scene {
     const x = this.lanePositions[this.currentLane];
     const y = 1000;
 
-    // ✅ 항상 dot를 먼저 시도, 실패(로드 안됨)이면 그때만 폴백
-    const key = this.textures.exists("dot") ? "dot" : "fallbackRect";
+    // ✅ 항상 dot를 우선 사용, 없으면 그때만 폴백
+    const texKey = this.textures.exists("dot") ? "dot" : "fallbackRect";
 
-    // 흰색 헤일로(배경과 대비)
+    // 가시성 보강: 흰색 헤일로(뒤)
     this.halo = this.add.graphics().setDepth(8);
     this.halo.fillStyle(0xffffff, 0.85).fillCircle(0, 0, 58);
     this.halo.setPosition(x, y);
 
-    // 흰색 아웃라인(같은 이미지 살짝 크게)
-    this.playerOutline = this.add.image(x, y, key).setDepth(9);
+    // 가시성 보강: 아웃라인(같은 텍스처를 살짝 크게 + 흰색 틴트)
+    this.playerOutline = this.add.image(x, y, texKey).setDepth(9);
     this.playerOutline.setDisplaySize(110, 110).setTint(0xffffff).setAlpha(0.95);
 
-    // 본체
-    this.player = this.physics.add.sprite(x, y, key).setDepth(10);
-    this.player.setDisplaySize(96, 96);
+    // 본체 스프라이트
+    this.player = this.physics.add.sprite(x, y, texKey).setDepth(10);
+    this.player.setDisplaySize(96, 96);       // 아이콘이 작아도 확실히 보이게
     this.player.setImmovable(true);
     this.player.setCollideWorldBounds(true);
 
-    // 상태 텍스트(원하면 지워도 됨)
-    this.statusText = this.add.text(10, 10,
-      `Lane:${this.currentLane} X:${Math.round(this.player.x)} tex:${key}`,
-      { fontSize: "20px", fill: "#00ff00" });
-
-    // 터치(좌/우 화면 절반)
+    // 터치 입력(좌/우 화면 절반)
     this.input.on("pointerdown", this.handleInput, this);
-
-    // (옵션) 키보드도 지원
-    this.cursors = this.input.keyboard.createCursorKeys();
   }
 
   update() {
-    if (this.cursors?.left?.isDown) this.moveLane(-1);
-    else if (this.cursors?.right?.isDown) this.moveLane(1);
-
-    // 보조 요소 위치 동기화
-    if (this.player) {
-      this.halo.x = this.player.x;
-      this.halo.y = this.player.y;
-      this.playerOutline.x = this.player.x;
-      this.playerOutline.y = this.player.y;
-      this.statusText.setText(
-        `Lane:${this.currentLane} X:${Math.round(this.player.x)} tex:${this.player.texture?.key}`
-      );
-    }
+    // 보조 레이어(헤일로/아웃라인) 위치를 본체에 동기화
+    if (!this.player) return;
+    this.halo.x = this.player.x;
+    this.halo.y = this.player.y;
+    this.playerOutline.x = this.player.x;
+    this.playerOutline.y = this.player.y;
   }
 
   handleInput(pointer) {
     const gameWidth = this.sys.game.config.width;
-    this.moveLane(pointer.x < gameWidth / 2 ? -1 : 1);
+    const dir = pointer.x < gameWidth / 2 ? -1 : 1;
+    this.moveLane(dir);
   }
 
   moveLane(delta) {
-    const newLane = Phaser.Math.Clamp(this.currentLane + delta, 0, this.lanePositions.length - 1);
+    const newLane = Phaser.Math.Clamp(
+      this.currentLane + delta,
+      0,
+      this.lanePositions.length - 1
+    );
     if (newLane === this.currentLane) return;
 
     this.currentLane = newLane;
+
     this.tweens.add({
       targets: [this.player, this.playerOutline, this.halo],
       x: this.lanePositions[this.currentLane],
@@ -94,6 +89,7 @@ class GameScene extends Phaser.Scene {
   }
 }
 
+// 게임 설정 및 시작
 new Phaser.Game({
   type: Phaser.AUTO,
   width: 720,
