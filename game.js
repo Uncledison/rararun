@@ -1,4 +1,4 @@
-// game.js: Rararun - 최종 안정화 및 디버깅 코드
+// game.js: Rararun - Sprite 및 물리 엔진 안정화 버전
 
 class GameScene extends Phaser.Scene {
     constructor() {
@@ -6,22 +6,24 @@ class GameScene extends Phaser.Scene {
         
         // 3차선 위치 정의 (X 좌표)
         this.lanePositions = [
-            0,   // 인덱스 0은 사용하지 않음
-            240, // 왼쪽 레인 (L)
-            360, // 중앙 레인 (C)
-            480  // 오른쪽 레인 (R)
+            0,   
+            240, 
+            360, 
+            480  
         ];
         this.currentLane = 2; // 중앙 레인(2번)에서 시작
-        this.playerGraphics = null; 
+        this.player = null;   // 이제 Graphics 대신 Sprite 객체를 사용할 것입니다.
         this.statusText = null;     
     }
     
+    // 1. 에셋 로드 (필수: assets/player.png 파일을 사용합니다)
     preload() {
-        // 이미지를 사용할 경우 여기에 추가됩니다.
+        // 'player'라는 키로 player.png 파일을 로드합니다.
+        this.load.image('player', 'assets/player.png');
     }
 
+    // 2. 게임 객체 초기화
     create() {
-        // 배경을 검정색으로 설정
         this.cameras.main.setBackgroundColor('#000000');
         
         // 디버깅 텍스트 생성
@@ -30,61 +32,50 @@ class GameScene extends Phaser.Scene {
             fill: '#00ff00' 
         });
         
-        // Graphics 객체 생성 (사각형 그리기 도구)
-        this.playerGraphics = this.add.graphics();
-        
-        // 초기 사각형 그리기 함수 호출 (Lane 2)
-        this.drawPlayer(this.currentLane); 
+        // *******************************************************
+        // * 핵심: 물리 엔진 Sprite 생성 (가장 안정적인 방법)
+        // *******************************************************
+        const playerX = this.lanePositions[this.currentLane];
+        const playerY = 1000; 
+
+        this.player = this.physics.add.sprite(
+            playerX, 
+            playerY, 
+            'player' // 로드한 'player' 이미지를 사용
+        );
+        this.player.setScale(2.0); // 이미지 크기를 두 배로 키워 잘 보이게 합니다.
+        this.player.setImmovable(true); // 움직이지 않도록 설정 (러너 게임의 고정 캐릭터)
 
         // 캔버스 터치 이벤트를 등록합니다.
         this.input.on('pointerdown', this.handleInput, this);
     }
     
     update(time, delta) {
-        // 디버깅 텍스트를 현재 상태로 업데이트합니다.
-        this.statusText.setText(`Lane: ${this.currentLane} / X: ${this.lanePositions[this.currentLane]}`);
+        // 디버깅 텍스트 업데이트
+        this.statusText.setText(`Lane: ${this.currentLane} / X: ${this.player.x}`);
     }
 
-    // 캐릭터를 그리는 보조 함수 (사각형 그리기 로직)
-    drawPlayer(laneIndex) {
-        const targetX = this.lanePositions[laneIndex];
-        const playerY = 800;  // 화면 중앙 Y=800 위치에 배치 (더 잘 보이도록)
-        
-        const size = 200;     // <-- 사각형 크기를 200x200으로 확대 (표시 여부 확인용)
-        const halfSize = size / 2;
-        
-        // 1. 이전 도형을 깨끗하게 지웁니다.
-        this.playerGraphics.clear();
-        
-        // 2. 새 도형을 그립니다.
-        this.playerGraphics.fillStyle(0xff0000, 1); // 빨간색 설정
-        this.playerGraphics.fillRect(
-            targetX - halfSize,  // X 시작 위치 (중앙 정렬)
-            playerY - halfSize,  // Y 시작 위치 (중앙 정렬)
-            size,                // 너비 200
-            size                 // 높이 200
-        ); 
-    }
-    
-    // 좌우 터치 입력 처리
+    // 좌우 터치 입력 처리 (애니메이션 Tween 사용)
     handleInput(pointer) {
         const gameWidth = this.sys.game.config.width;
         let newLane = this.currentLane;
 
-        // 왼쪽 터치
         if (pointer.x < gameWidth / 2) {
-            newLane = Math.max(1, this.currentLane - 1); // 1 레인 이하로 못 감
-        } 
-        // 오른쪽 터치
-        else {
-            newLane = Math.min(3, this.currentLane + 1); // 3 레인 이상으로 못 감
+            newLane = Math.max(1, this.currentLane - 1); // 왼쪽 이동
+        } else {
+            newLane = Math.min(3, this.currentLane + 1); // 오른쪽 이동
         }
         
         if (newLane !== this.currentLane) {
             this.currentLane = newLane;
             
-            // 레인이 바뀌면 사각형을 새 위치에 다시 그립니다.
-            this.drawPlayer(this.currentLane);
+            // 스프라이트를 새 레인 위치로 부드럽게 이동시킵니다. (애니메이션)
+            this.tweens.add({
+                targets: this.player,
+                x: this.lanePositions[this.currentLane],
+                duration: 150, // 0.15초 이동
+                ease: 'Power1'
+            });
         }
     }
 }
@@ -93,8 +84,17 @@ class GameScene extends Phaser.Scene {
 // 게임 환경 설정 (config)
 const config = {
     type: Phaser.AUTO,
-    width: 720,  // 모바일 세로 화면 폭
-    height: 1280, // 모바일 세로 화면 높이
+    width: 720,  
+    height: 1280, 
+    // *******************************************************
+    // * 핵심: 물리 엔진 설정 추가 (Sprite 사용을 위해 필수)
+    // *******************************************************
+    physics: {
+        default: 'arcade', 
+        arcade: {
+            // debug: true // 디버깅 시 유용합니다.
+        }
+    },
     scene: [GameScene]
 };
 
