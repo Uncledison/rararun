@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tomb of the Web</title>
+    <title>Rararun Debug</title>
     <script src="//cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.js"></script>
     <style>
         /* 모바일 전체 화면을 위해 기본 여백 제거 */
@@ -11,6 +11,100 @@
     </style>
 </head>
 <body>
-    <script src="game.js"></script>
+    <script>
+        
+        // =================================================================
+        // 이전 game.js 파일의 내용을 여기에 붙여넣습니다. (Sprite 버전)
+        // =================================================================
+        
+        class GameScene extends Phaser.Scene {
+            constructor() {
+                super({ key: 'GameScene' });
+                this.lanePositions = [ 0, 240, 360, 480 ];
+                this.currentLane = 2; 
+                this.player = null; 
+                this.statusText = null;     
+            }
+            
+            preload() {
+                // 반드시 'assets/player.png' 파일이 있어야 합니다.
+                this.load.image('player', 'assets/player.png');
+                
+                // 추가 디버깅: 로드가 실패할 경우를 대비한 텍스트
+                this.statusText = this.add.text(10, 50, 'Assets Loading...', { fontSize: '24px', fill: '#FFFF00' });
+            }
+
+            create() {
+                this.cameras.main.setBackgroundColor('#000000');
+                
+                // 디버깅 텍스트 위치를 옮깁니다.
+                this.statusText.destroy(); // 기존 텍스트 제거
+                this.statusText = this.add.text(10, 10, 'Engine Loaded OK', { 
+                    fontSize: '24px', 
+                    fill: '#00ff00' 
+                });
+                
+                // *******************************************************
+                // * 핵심: 물리 엔진 Sprite 생성 
+                // *******************************************************
+                const playerX = this.lanePositions[this.currentLane];
+                const playerY = 1000; 
+
+                this.player = this.physics.add.sprite(
+                    playerX, 
+                    playerY, 
+                    'player' 
+                );
+                this.player.setScale(2.0); 
+                this.player.setImmovable(true); 
+
+                // 캔버스 터치 이벤트를 등록합니다.
+                this.input.on('pointerdown', this.handleInput, this);
+            }
+            
+            update(time, delta) {
+                this.statusText.setText(`Lane: ${this.currentLane} / X: ${this.player.x}`);
+            }
+
+            handleInput(pointer) {
+                const gameWidth = this.sys.game.config.width;
+                let newLane = this.currentLane;
+
+                if (pointer.x < gameWidth / 2) {
+                    newLane = Math.max(1, this.currentLane - 1);
+                } else {
+                    newLane = Math.min(3, this.currentLane + 1);
+                }
+                
+                if (newLane !== this.currentLane) {
+                    this.currentLane = newLane;
+                    this.tweens.add({
+                        targets: this.player,
+                        x: this.lanePositions[this.currentLane],
+                        duration: 150,
+                        ease: 'Power1'
+                    });
+                }
+            }
+        }
+
+        // 게임 환경 설정 (config)
+        const config = {
+            type: Phaser.AUTO,
+            width: 720,  
+            height: 1280, 
+            physics: {
+                default: 'arcade', 
+                arcade: {
+                    // debug: true // 콘솔이 있다면 여기서 충돌 박스를 확인할 수 있습니다.
+                }
+            },
+            scene: [GameScene]
+        };
+
+        // 게임 시작
+        const game = new Phaser.Game(config);
+
+    </script>
 </body>
 </html>
